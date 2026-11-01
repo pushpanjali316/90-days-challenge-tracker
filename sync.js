@@ -88,15 +88,20 @@
   function msg(t) { $('amsg').textContent = t; }
   function showAuth() { $('auth').hidden = false; }
   function hideAuth() { $('auth').hidden = true; }
-  async function sendLink() {
-    var e = val('aemail'); if (!e) return msg('Enter your email first.');
-    msg('Sending...');
-    var r = await sb.auth.signInWithOtp({ email: e, options: { emailRedirectTo: location.origin + location.pathname } });
-    msg(r.error ? r.error.message : 'Check your email. Open the link, or type the 6-digit code here.');
-  }
-  async function verify() {
-    var r = await sb.auth.verifyOtp({ email: val('aemail'), token: val('acode'), type: 'email' });
+  async function signIn() {
+    var e = val('aemail'), p = $('apass').value;
+    if (!e || !p) return msg('Enter your email and password.');
+    msg('Signing in...');
+    var r = await sb.auth.signInWithPassword({ email: e, password: p });
     if (r.error) msg(r.error.message);
+  }
+  async function signUp() {
+    var e = val('aemail'), p = $('apass').value;
+    if (!e || p.length < 6) return msg('Enter your email and a password of 6+ characters.');
+    msg('Creating account...');
+    var r = await sb.auth.signUp({ email: e, password: p });
+    if (r.error) msg(r.error.message);
+    else if (!r.data.session) msg('Account created. Confirm the email we sent, then sign in.');
   }
   async function signOut() {
     await sb.auth.signOut();
@@ -107,8 +112,8 @@
     var u = units(db), m = db.mod = db.mod || {};
     for (var k in u) { snap[k] = JSON.stringify(u[k]); if (!m[k]) m[k] = 1; } // old data: oldest stamp
     $('syncbtn').onclick = function () { user ? signOut() : showAuth(); };
-    $('asend').onclick = function () { if (sb) sendLink(); };
-    $('averify').onclick = function () { if (sb) verify(); };
+    $('asignin').onclick = function () { if (sb) signIn(); };
+    $('asignup').onclick = function () { if (sb) signUp(); };
     $('askip').onclick = function () { localStorage.setItem('sync_skip', '1'); hideAuth(); };
     if (!window.supabase || !C.url) return say('off', 'Sync unavailable');
     sb = window.supabase.createClient(C.url, C.key);

@@ -24,9 +24,9 @@
 <div id="syncbar"><span id="syncmsg"></span><button id="syncbtn" type="button">Sign in</button></div>
 <div id="auth" hidden><div class="card"><h2>Sync across devices</h2><p class="muted">Sign in with your email to keep your progress on every device.</p>
 <input type="text" id="aemail" placeholder="you@email.com" inputmode="email" autocomplete="email">
-<button class="btn" id="asend" type="button">Email me a login link</button>
-<input type="text" id="acode" placeholder="6-digit code from the email" inputmode="numeric" autocomplete="one-time-code">
-<button class="btn alt" id="averify" type="button">Verify code</button>
+<input type="password" id="apass" placeholder="Password (6+ characters)" autocomplete="current-password">
+<button class="btn" id="asignin" type="button">Sign in</button>
+<button class="btn alt" id="asignup" type="button">Create account</button>
 <p id="amsg" class="muted"></p>
 <button class="btn alt" id="askip" type="button">Continue without sync</button></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>

@@ -91,8 +91,8 @@ input[type=checkbox]:checked::after{transform:translateY(-1px) rotate(45deg) sca
 
 /* inputs */
 .add{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-input[type=text],select,textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);transition:border-color .2s,box-shadow .25s,transform .2s}
-input[type=text]:focus,select:focus,textarea:focus{outline:0;border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.18);transform:translateY(-1px)}
+input[type=text],input[type=password],select,textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);transition:border-color .2s,box-shadow .25s,transform .2s}
+input[type=text]:focus,input[type=password]:focus,select:focus,textarea:focus{outline:0;border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.18);transform:translateY(-1px)}
 .add input[type=text]{flex:1;min-width:160px}
 textarea{width:100%;min-height:80px;resize:vertical}
 
