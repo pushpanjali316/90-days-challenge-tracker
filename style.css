@@ -195,3 +195,17 @@ textarea{width:100%;min-height:80px;resize:vertical}
 #auth{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(11,16,32,.55)}
 #auth[hidden]{display:none}
 #auth .card{width:min(420px,100%);display:grid;gap:10px;margin:0}
+
+/* Mobile: name on its own line, tags and star on the line below, delete pinned top-right */
+@media(max-width:600px){
+  .row{flex-wrap:wrap;row-gap:6px}
+  .row:has(.x){position:relative;padding-right:36px}
+  .row .t{flex:1 1 calc(100% - 40px);min-width:0;word-break:normal;overflow-wrap:anywhere;line-height:1.35}
+  .row .t+.tag{margin-left:32px}
+  .row .x{position:absolute;right:8px;top:7px}
+  .row .star,.row .chip{margin-left:auto}
+  .add input[type=text]{flex:1 1 100%}
+  .add select{flex:1 1 0;min-width:0}
+  .add .btn{flex:none}
+  .wrap{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}
