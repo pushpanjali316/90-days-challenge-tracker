@@ -21,12 +21,14 @@
 <nav id="nav"></nav>
 <main id="app"></main>
 </div>
-<div id="syncbar"><span id="syncmsg"></span><button id="syncbtn" type="button">Sign in</button></div>
+<div id="syncbar"><span id="syncmsg"></span><button id="litebtn" type="button" title="Turn animations off to save battery">Lite</button><button id="syncbtn" type="button">Sign in</button></div>
+<div id="toast" hidden></div>
 <div id="auth" hidden><div class="card"><h2>Sync across devices</h2><p class="muted">Sign in with your email to keep your progress on every device.</p>
 <input type="text" id="aemail" placeholder="you@email.com" inputmode="email" autocomplete="email">
 <input type="password" id="apass" placeholder="Password (6+ characters)" autocomplete="current-password">
 <button class="btn" id="asignin" type="button">Sign in</button>
 <button class="btn alt" id="asignup" type="button">Create account</button>
+<button class="btn alt" id="aforgot" type="button">Forgot password</button>
 <p id="amsg" class="muted"></p>
 <button class="btn alt" id="askip" type="button">Continue without sync</button></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
