@@ -3,7 +3,7 @@
 (function () {
   var C = window.SYNC_CONFIG || {}, sb = null, user = null, ch = null;
   var snap = {}, timer = null, busy = false, again = false;
-  var BUCKETS = ['weeks', 'sub', 'rev', 'ms'];
+  var BUCKETS = ['weeks', 'sub', 'rev', 'ms', 'wm', 'lc', 'sheet'];
 
   function $(id) { return document.getElementById(id); }
   function val(id) { return $(id).value.trim(); }
@@ -23,7 +23,7 @@
   }
   function pack(d) {
     return { days: d.days || {}, weeks: d.weeks || {}, sub: d.sub || {}, rev: d.rev || {},
-             ms: d.ms || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
+             ms: d.ms || {}, wm: d.wm || {}, lc: d.lc || {}, sheet: d.sheet || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
   }
   function say(cls, msg) {
     var e = $('syncmsg'); if (e) { e.className = cls; e.textContent = msg; }
@@ -44,7 +44,7 @@
     var ea = a.epoch || 0, eb = b.epoch || 0;
     if (eb > ea) return pack(b);
     if (ea > eb) return pack(a);
-    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, mod: {}, epoch: ea };
+    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, mod: {}, epoch: ea };
     var ua = units(a), ub = units(b), ma = a.mod || {}, mb = b.mod || {};
     Object.keys(ua).concat(Object.keys(ub)).forEach(function (k) {
       var useB = (k in ub) && (!(k in ua) || (mb[k] || 0) > (ma[k] || 0));

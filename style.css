@@ -209,3 +209,6 @@ textarea{width:100%;min-height:80px;resize:vertical}
   .add .btn{flex:none}
   .wrap{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 }
+
+#shp{width:100%;min-height:130px;margin-top:8px}
+.sub label .x{margin-left:auto}
