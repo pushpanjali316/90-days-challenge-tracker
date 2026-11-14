@@ -3,7 +3,7 @@
 (function () {
   var C = window.SYNC_CONFIG || {}, sb = null, user = null, ch = null;
   var snap = {}, timer = null, busy = false, again = false, tsnap = {}, tday = {}, lastOk = 0;
-  var BUCKETS = ['weeks', 'sub', 'rev', 'ms', 'wm', 'lc', 'sheet', 'sr', 'pn'];
+  var BUCKETS = ['weeks', 'sub', 'rev', 'ms', 'wm', 'lc', 'sheet', 'sr', 'pn', 'cl'];
 
   function $(id) { return document.getElementById(id); }
   function val(id) { return $(id).value.trim(); }
@@ -23,7 +23,7 @@
   }
   function pack(d) {
     return { days: d.days || {}, weeks: d.weeks || {}, sub: d.sub || {}, rev: d.rev || {},
-             ms: d.ms || {}, wm: d.wm || {}, lc: d.lc || {}, sheet: d.sheet || {}, sr: d.sr || {}, pn: d.pn || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
+             ms: d.ms || {}, wm: d.wm || {}, lc: d.lc || {}, sheet: d.sheet || {}, sr: d.sr || {}, pn: d.pn || {}, cl: d.cl || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
   }
   function say(cls, msg) {
     var e = $('syncmsg'); if (e) { e.className = cls; e.textContent = msg; e.onclick = cls === 'err' ? function () { sync(); } : null; }
@@ -80,7 +80,7 @@
     var ea = a.epoch || 0, eb = b.epoch || 0;
     if (eb > ea) return pack(b);
     if (ea > eb) return pack(a);
-    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, mod: {}, epoch: ea };
+    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, mod: {}, epoch: ea };
     var ua = units(a), ub = units(b), ma = a.mod || {}, mb = b.mod || {};
     Object.keys(ua).concat(Object.keys(ub)).forEach(function (k) {
       var useB = (k in ub) && (!(k in ua) || (mb[k] || 0) > (ma[k] || 0));
@@ -150,7 +150,7 @@
     if (!confirm('Sign out? Your data stays in your cloud account but is removed from this device.')) return;
     await sb.auth.signOut();
     if (ch) { sb.removeChannel(ch); ch = null; }
-    var e = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, mod: {}, timer: null, lastBackup: 0, epoch: 0 };
+    var e = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, mod: {}, timer: null, lastBackup: 0, epoch: 0 };
     Object.keys(db).forEach(function (k) { delete db[k]; });
     for (var k in e) db[k] = e[k];
     snap = {}; store(); render();

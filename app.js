@@ -20,7 +20,7 @@ var GOALS=[
 ['December','Build up','#7C3AED','DSA: Strings, Binary Search, start Linked Lists','Web: React basics + one small project'],
 ['January','Finish strong','#EA580C','DSA: Linked Lists, then Trees','Web: Complete React + 1-2 projects']];
 var MS=[['nov-html','Nov: HTML and CSS revised'],['nov-js','Nov: JavaScript completed'],['nov-proj','Nov: 2 JS projects built'],['dec-str','Dec: Strings done'],['dec-bs','Dec: Binary Search done'],['dec-react','Dec: React basics + small project'],['jan-ll','Jan: Linked Lists done'],['jan-tr','Jan: Trees basics done'],['jan-react','Jan: React complete with projects']];
-var db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},timer:null,lastBackup:0},view='today',cur=new Date(),openW={},openS={},saveFailed=false,lastSig='',just=null,justOpen=null;
+var db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},timer:null,lastBackup:0},view='today',cur=new Date(),openW={},openS={},saveFailed=false,lastSig='',just=null,justOpen=null;
 try{var raw=localStorage.getItem(KEY);if(raw){var x=JSON.parse(raw);for(var p in x)db[p]=x[p]}}catch(e){saveFailed=true}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 function save(){if(undoPending){undoPending=false;toast(UMSG[undoAct]||'Change saved.')}try{localStorage.setItem(KEY,JSON.stringify(db));saveFailed=false}catch(e){saveFailed=true}if(window.Sync)Sync.changed()}
@@ -53,9 +53,9 @@ function clock(sec){var m=Math.floor(sec/60),s=sec%60;return String(m).padStart(
 function render(){
   var n=dayNo(new Date());
   document.getElementById('sub').textContent=n<1?'Starts Nov 1, 2026. Get ready!':n>TOTAL?'Challenge complete. Well done!':'Day '+n+' of '+TOTAL+'  |  Finish line: Feb 6, 2027';
-  var tabs=['today:Today','plan:Plan','revise:Revise','dash:Stats','backup:Backup'];
+  var tabs=['today:Today','plan:DSA List','revise:Revise','dash:Stats','backup:Backup'];
   document.getElementById('nav').innerHTML=tabs.map(function(x){var p=x.split(':');return '<button data-view="'+p[0]+'" class="'+(view===p[0]?'on':'')+'">'+p[1]+'</button>'}).join('');
-  var h=view==='today'?today():view==='plan'?plan():view==='revise'?revise():view==='dash'?dash():backup();
+  var h=view==='today'?today():view==='plan'?checklist():view==='revise'?revise():view==='dash'?dash():backup();
   if(saveFailed)h='<div class="banner">Your browser is blocking storage, so progress will not be saved. Allow site data or use a normal (not private) window.</div>'+h;
   var app=document.getElementById('app'),sig=view+(view==='today'?key(cur):'');
   app.className=sig!==lastSig?'enter':'';document.getElementById('nav').className=app.className;lastSig=sig;
@@ -129,7 +129,7 @@ function sheet(){var s=db.sheet;
   h+=s.secs.map(function(c,si){var its=[];c.it.forEach(function(p,pi){if(pass(p))its.push(pRow(si,p,pi))});if(fl&&!its.length)return '';var open=fl||!!openS[si];
     return '<div class="wkh'+(open?' open':'')+'" data-act="opens" data-i="'+si+'"><div><b>'+esc(c.n)+'</b> <span class="muted">'+c.it.filter(lcDone).length+'/'+c.it.length+'</span></div></div>'+(open?'<div class="sub">'+its.join('')+'</div>':'')}).join('');
   return h+'<div class="add"><input type="text" id="apn" placeholder="Add your own: 123 Problem name"><select id="apd"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><select id="aps">'+s.secs.map(function(c,j){return '<option value="'+j+'">'+esc(c.n)+'</option>'}).join('')+'<option value="new">New section...</option></select><button class="btn" data-act="apadd">Add</button></div><div class="add"><button class="btn alt" data-act="shreset">Replace sheet</button></div></div>'}
-var UNDO=['del','reset','shreset','wmdel'],UMSG={del:'Task deleted.',reset:'All data reset.',shreset:'Sheet removed.',wmdel:'Milestone removed.'},undoS=null,undoT=null,undoPending=false,undoAct='';
+var UNDO=['del','reset','shreset','wmdel','cldel','cldelsec','clreset'],UMSG={cldel:'Question removed.',cldelsec:'Topic deleted.',clreset:'Checklist reset.',del:'Task deleted.',reset:'All data reset.',shreset:'Sheet removed.',wmdel:'Milestone removed.'},undoS=null,undoT=null,undoPending=false,undoAct='';
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.innerHTML=esc(m)+' <button id="undobtn" type="button">Undo</button>';t.hidden=false;document.getElementById('undobtn').onclick=doUndo;clearTimeout(undoT);undoT=setTimeout(function(){t.hidden=true;undoS=null},8000)}
 function doUndo(){if(!undoS)return;var o=JSON.parse(undoS);if((o.epoch||0)!==(db.epoch||0))o.epoch=Date.now();Object.keys(db).forEach(function(k){delete db[k]});for(var k in o)db[k]=o[k];undoS=null;document.getElementById('toast').hidden=true;save();render()}
 function meta(k){var e=db.sr[k]||{};return (e.m?'<span class="muted">'+e.m+'m, feel '+e.h+'/5</span> ':'')+(db.pn[k]?'<span class="muted">'+esc(db.pn[k])+'</span> ':'')}
@@ -137,8 +137,29 @@ function wkStat(i){var c=[0,0,0],tp={},wd=0,n=0;for(var d=i*7+1;d<=i*7+7;d++){va
 function report(){var dn=dayNo(new Date());if(dn<1||dn>TOTAL)return '';var s=wkStat(weekIdx(dn)),sun=new Date().getDay()===0,rec=0;
   for(var j=0;j<7;j++)rec+=dayOf(key(addDays(new Date(),-j))).dsa.filter(function(x){return x.done}).length;
   var h='<div class="card"><h2>'+(sun?'Weekly report':'This week so far')+'</h2><div>Solved <b>'+s.n+'</b> ('+s.c[0]+' easy, '+s.c[1]+' medium, '+s.c[2]+' hard). Web tasks done: <b>'+s.wd+'</b></div>';
-  if(db.sheet&&db.sheet.secs&&db.sheet.secs.length){var tot=0,dd=0;db.sheet.secs.forEach(function(c){c.it.forEach(function(p){tot++;if(lcDone(p))dd++})});var need=((tot-dd)/Math.max(1,TOTAL-dn+1)),pace=rec/7;h+='<div>Pace: <b>'+pace.toFixed(1)+'/day</b> over the last 7 days. You need <b>'+need.toFixed(1)+'/day</b> to finish the sheet by day '+TOTAL+': <b>'+(pace>=need?'on track':'behind')+'</b>.</div>'}
+  {var tot=0,dd=0,uu={};cparts().forEach(function(p){crows(p).forEach(function(i){var k=ckey(i);if(!uu[k]){uu[k]=1;tot++;if(cdone(i))dd++}})});var need=((tot-dd)/Math.max(1,TOTAL-dn+1)),pace=rec/7;h+='<div>Pace: <b>'+pace.toFixed(1)+'/day</b> over the last 7 days. You need <b>'+need.toFixed(1)+'/day</b> to finish the sheet by day '+TOTAL+': <b>'+(pace>=need?'on track':'behind')+'</b>.</div>'}
   return h+'</div>'}
+var clPart=0,openC={};
+function ckey(i){return i.n&&i.n!=='-'?String(i.n):i.t.toLowerCase()}
+function cdone(i){var k=ckey(i);return db.lc.hasOwnProperty(k)?!!db.lc[k]:!!i.done}
+function cparts(){if(!db.cl||!db.cl.parts)db.cl=JSON.parse(JSON.stringify(CL_SEED));return db.cl.parts}
+function crows(p){return p.sections.reduce(function(a,s){return a.concat(s.items)},[])}
+function ctopic(n){return n==='Linked Lists'?'Linked List':TOPICS.indexOf(n)>=0?n:'Other'}
+function cfindId(id){var P=cparts();for(var a=0;a<P.length;a++)for(var b=0;b<P[a].sections.length;b++){var s=P[a].sections[b],i=s.items.filter(function(x){return x.id===id})[0];if(i)return {p:P[a],s:s,i:i}}return null}
+function cfind(k){var P=cparts();for(var a=0;a<P.length;a++){var r=crows(P[a]).filter(function(x){return ckey(x)===k})[0];if(r)return r}return null}
+function cpass(i){var d=cdone(i);if(shF==='todo'&&d)return false;if(shF==='done'&&!d)return false;if(/^(Easy|Medium|Hard)$/.test(shF)&&i.d!==shF)return false;if(shQ&&(i.n+' '+i.t).toLowerCase().indexOf(shQ)<0)return false;return true}
+function crow(i){var k=ckey(i),lq=encodeURIComponent(i.t.replace(/ \((P|GFG)\)$/,''));return '<label><input type="checkbox" data-act="clt" data-id="'+esc(i.id)+'"'+(cdone(i)?' checked':'')+'><span class="t">'+(i.n!=='-'?'#'+esc(i.n)+' <a target="_blank" rel="noopener" href="https://leetcode.com/problemset/?search='+lq+'">'+esc(i.t)+'</a>':esc(i.t))+'</span> <span class="tag '+esc(i.d)+'">'+esc(i.d)+'</span> <button class="chip" data-act="cladd" data-id="'+esc(i.id)+'">+ Today</button> <button class="chip" data-act="pnote" data-k="'+esc(k)+'">Note</button>'+(cdone(i)?' <button class="chip" data-act="plog" data-k="'+esc(k)+'">Log</button>':'')+' <button class="x" data-act="cldel" data-id="'+esc(i.id)+'" title="Remove">\u00d7</button>'+(db.pn[k]||i.note?'<div class="muted">'+esc(db.pn[k]||i.note)+'</div>':'')+'</label>'}
+function checklist(){var P=cparts();if(clPart>=P.length)clPart=0;var u={};P.forEach(function(p){crows(p).forEach(function(i){var k=ckey(i);u[k]=u[k]||cdone(i)})});var ks=Object.keys(u),tot=ks.length,dn=ks.filter(function(k){return u[k]}).length,tk=key(new Date());
+  var h=report()+'<div class="card"><h2>DSA Checklist</h2><b>'+dn+' of '+tot+' problems done</b><div class="prog"><i style="width:'+(tot?dn/tot*100:0)+'%"></i></div>';
+  var due=Object.keys(db.sr).filter(function(k){return db.sr[k].d<=tk&&cfind(k)}).sort(function(a,b){var x=db.sr[a],y=db.sr[b];return ((y.h||0)-(x.h||0))||((y.m||0)-(x.m||0))});
+  if(due.length)h+='<b class="muted">Revision due ('+due.length+')</b>'+due.slice(0,6).map(function(k){var i=cfind(k);return '<div class="row"><span class="t">'+(i.n!=='-'?'#'+esc(i.n)+' ':'')+esc(i.t)+'</span>'+meta(k)+'<button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="e">Easy</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="h">Hard</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="f">Forgot</button></div>'}).join('');
+  h+='<div class="add">'+P.map(function(p,i){var r=crows(p);return '<button class="chip" data-act="cltab" data-i="'+i+'"'+(i===clPart?' style="background:var(--purple);color:#fff"':'')+'>'+esc(p.name)+' '+r.filter(cdone).length+'/'+r.length+'</button>'}).join('')+'</div>';
+  h+='<div class="add"><input type="text" id="shq" placeholder="Search by name or number" value="'+esc(shQ)+'"><select id="shf">'+[['all','All'],['todo','To do'],['done','Done'],['Easy','Easy'],['Medium','Medium'],['Hard','Hard']].map(function(o){return '<option value="'+o[0]+'"'+(shF===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>';
+  var p=P[clPart],fl=shQ||shF!=='all';
+  h+=p.sections.map(function(s){var its=s.items.filter(cpass);if(fl&&!its.length)return '';var open=fl||!!openC[s.id],d=s.items.filter(cdone).length;
+    return '<div class="wkh'+(open?' open':'')+'" data-act="clsec" data-id="'+esc(s.id)+'"><div><b>'+esc(s.name)+'</b> <span class="muted">'+d+'/'+s.items.length+'</span></div></div>'+(open?'<div class="sub">'+its.map(crow).join('')+'<div class="add" data-sid="'+esc(s.id)+'"><input type="text" data-f="n" placeholder="#" style="max-width:70px"><input type="text" data-f="t" placeholder="Add a question"><select data-f="d"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><button class="btn" data-act="claddq">Add</button></div><button class="btn alt" data-act="cldelsec" data-id="'+esc(s.id)+'">Delete this topic</button></div>':'')}).join('');
+  h+='<div class="add"><input type="text" id="newsec" placeholder="New topic in '+esc(p.name)+'"><button class="btn" data-act="claddsec">Add topic</button></div><div class="add"><button class="btn alt" data-act="climp">Import old checklist backup</button><button class="btn alt" data-act="clreset">Reset to original list</button></div></div>';
+  return h}
 function plan(){
   var c=weekIdx(dayNo(new Date())),started=dayNo(new Date())>=1,dn=Object.keys(db.weeks).filter(function(k){return db.weeks[k]}).length;
   var nov=0;allKeys().forEach(function(k){dayOf(k).dsa.forEach(function(t){if(t.done&&(t.topic==='Stacks'||t.topic==='Queues'))nov++})});
@@ -222,23 +243,33 @@ document.addEventListener('click',function(e){
   else if(a==='pnote'){var nk=b.dataset.k,nv=prompt('Note for this problem (approach, trick, mistake):',db.pn[nk]||'');if(nv===null)return;if(nv.trim())db.pn[nk]=nv.trim();else delete db.pn[nk];save();render()}
   else if(a==='plog'){var gk=b.dataset.k,lv=prompt('Minutes taken, then how hard it felt 1-5 (example: 25 4):');if(!lv)return;var mm=lv.match(/(\d+)\D+([1-5])/);if(!mm){alert('Use: minutes then 1-5, for example 25 4');return}var en=db.sr[gk]=db.sr[gk]||{s:0,d:key(addDays(new Date(),1))};en.m=+mm[1];en.h=+mm[2];save();render()}
   else if(a==='apadd'){var av=document.getElementById('apn').value.trim();if(!av)return;var am=av.match(/^(\d+)\s+(.+)$/),ap=[am?am[1]:'-',am?am[2]:av,document.getElementById('apd').value,0],as=document.getElementById('aps').value;if(as==='new'){var nn=prompt('New section name:');if(!nn)return;db.sheet.secs.push({n:nn.trim(),p:'',it:[ap]})}else db.sheet.secs[+as].it.push(ap);save();render()}
+  else if(a==='cltab'){clPart=+b.dataset.i;render()}
+  else if(a==='clsec'){openC[b.dataset.id]=!openC[b.dataset.id];render()}
+  else if(a==='cladd'){var ci=cfindId(b.dataset.id);if(!ci)return;ensure(k).dsa.push({id:uid(),t:(ci.i.n!=='-'?'#'+ci.i.n+' ':'')+ci.i.t,d:ci.i.d,topic:ctopic(ci.p.name),done:false,rv:false,lk:ckey(ci.i)});save();b.textContent='Added';b.disabled=true}
+  else if(a==='cldel'){var cd=cfindId(b.dataset.id);if(!cd)return;cd.s.items=cd.s.items.filter(function(x){return x.id!==b.dataset.id});save();render()}
+  else if(a==='cldelsec'){var cp=cparts()[clPart];cp.sections=cp.sections.filter(function(s){return s.id!==b.dataset.id});save();render()}
+  else if(a==='claddq'){var bx=b.closest('.add'),gf=function(f){return bx.querySelector('[data-f='+f+']')},qt=gf('t').value.trim();if(!qt)return;var cs=cparts()[clPart].sections.filter(function(s){return s.id===bx.dataset.sid})[0];cs.items.push({id:uid(),n:gf('n').value.trim()||'-',t:qt,d:gf('d').value,done:false});save();render()}
+  else if(a==='claddsec'){var nv2=document.getElementById('newsec').value.trim();if(!nv2)return;var ns={id:uid(),name:nv2,items:[]};cparts()[clPart].sections.push(ns);openC[ns.id]=true;save();render()}
+  else if(a==='clreset'){if(!confirm('Reset the checklist to the original list? This also clears your ticks on it.'))return;db.cl=JSON.parse(JSON.stringify(CL_SEED));db.lc={};save();render()}
+  else if(a==='climp'){var tx=prompt('Paste the backup text from your standalone DSA Checklist (Show backup):');if(!tx)return;try{var o2=JSON.parse(tx);if(!o2||!Array.isArray(o2.parts))throw 0;db.cl=o2;db.lc={};save();render()}catch(x){alert('That text is not a valid backup.')}}
   else if(a==='wmadd'){var q=+b.dataset.i,v=document.getElementById('wmt'+q).value.trim();if(!v)return;wmSet(q,wm(q).concat([{id:uid(),t:v,g:document.getElementById('wmg'+q).value,s:(document.getElementById('wms'+q)||{value:''}).value,done:false}]))}
   else if(a==='wmdel'){var q2=+b.dataset.i;wmSet(q2,wm(q2).filter(function(x){return x.id!==b.dataset.id}))}
   else if(a==='shload'){var ss=parseSheet(document.getElementById('shp').value);if(!ss.length){alert('No problems found. Paste the table rows (Step, #, Problem, Difficulty, Status).');return}db.sheet={secs:ss};save();render()}
   else if(a==='shreset'){if(confirm('Replace the sheet? Your ticks on it are kept.')){db.sheet={};save();render()}}
   else if(a==='opens'){openS[+b.dataset.i]=!openS[+b.dataset.i];render()}
-  else if(a==='reset'){if(confirm('Erase all your progress? This cannot be undone.')){db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},timer:null,lastBackup:0,epoch:Date.now()};save();render()}}
+  else if(a==='reset'){if(confirm('Erase all your progress? This cannot be undone.')){db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},timer:null,lastBackup:0,epoch:Date.now()};save();render()}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,a=t.dataset.act;
   if(t.id==='shf'){shF=t.value;render();return}
   if(t.type==='checkbox'&&t.checked)burst(t);
   if(a==='tick')just=t.dataset.id;
-  if(t.id==='imp'&&t.files[0]){var r=new FileReader();r.onload=function(){try{var x=JSON.parse(r.result);if(!x.days)throw 0;if(!confirm('Restore this backup? It replaces ALL data here and on every synced device.'))return;db={days:x.days,weeks:x.weeks||{},sub:x.sub||{},rev:x.rev||{},ms:x.ms||{},wm:x.wm||{},lc:x.lc||{},sheet:x.sheet||{},sr:x.sr||{},pn:x.pn||{},timer:null,lastBackup:x.lastBackup||0,epoch:Date.now()};save();render();alert('Backup restored.')}catch(err){alert('That file is not a valid backup.')}};r.readAsText(t.files[0]);return}
+  if(t.id==='imp'&&t.files[0]){var r=new FileReader();r.onload=function(){try{var x=JSON.parse(r.result);if(!x.days)throw 0;if(!confirm('Restore this backup? It replaces ALL data here and on every synced device.'))return;db={days:x.days,weeks:x.weeks||{},sub:x.sub||{},rev:x.rev||{},ms:x.ms||{},wm:x.wm||{},lc:x.lc||{},sheet:x.sheet||{},sr:x.sr||{},pn:x.pn||{},cl:x.cl||{},timer:null,lastBackup:x.lastBackup||0,epoch:Date.now()};save();render();alert('Backup restored.')}catch(err){alert('That file is not a valid backup.')}};r.readAsText(t.files[0]);return}
   if(a==='tick'){ensure(key(cur))[t.dataset.type].forEach(function(x){if(x.id===t.dataset.id){x.done=t.checked;if(x.lk)lcSet(x.lk,t.checked)}});save();render()}
   else if(a==='rvdone'){ensure(t.dataset.k).dsa.forEach(function(x){if(x.id===t.dataset.id)x.rvDone=t.checked});save();render()}
   else if(a==='week'){db.weeks[t.dataset.i]=t.checked;save();render()}
   else if(a==='sub'){db.sub[t.dataset.k]=t.checked;save();render()}
+  else if(a==='clt'){var cx=cfindId(t.dataset.id);if(cx){lcSet(ckey(cx.i),t.checked);save();render()}}
   else if(a==='wmtick'){var q3=+t.dataset.i;wmSet(q3,wm(q3).map(function(x){if(x.id===t.dataset.id)x.done=t.checked;return x}))}
   else if(a==='lc'){lcSet(t.dataset.k,t.checked);save();render()}
   else if(a==='ms'){db.ms[t.dataset.id]=t.checked;save();render()}
