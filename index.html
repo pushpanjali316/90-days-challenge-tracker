@@ -13,15 +13,17 @@
 <link rel="icon" href="icon-192.png">
 <title>90 Days Challenge Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <div class="wrap">
 <header><span class="spark"></span><span class="spark"></span><span class="spark"></span><span class="spark"></span><h1>90 Days Challenge</h1><p id="sub"></p></header>
+<div id="warn" hidden></div>
 <nav id="nav"></nav>
 <main id="app"></main>
 </div>
-<div id="syncbar"><span id="syncmsg"></span><button id="litebtn" type="button" title="Turn animations off to save battery">Lite</button><button id="syncbtn" type="button">Sign in</button></div>
+<div id="syncbar"><span id="syncmsg"></span><button id="menubtn" type="button">Menu</button><button id="syncbtn" type="button">Sign in</button></div>
+<div id="psheet" hidden></div>
 <div id="toast" hidden></div>
 <div id="auth" hidden><div class="card"><h2>Sync across devices</h2><p class="muted">Sign in with your email to keep your progress on every device.</p>
 <input type="text" id="aemail" placeholder="you@email.com" inputmode="email" autocomplete="email">
@@ -32,9 +34,9 @@
 <p id="amsg" class="muted"></p>
 <button class="btn alt" id="askip" type="button">Continue without sync</button></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="sync.js"></script>
-<script src="checklist.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=7"></script>
+<script src="sync.js?v=7"></script>
+<script src="checklist.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
