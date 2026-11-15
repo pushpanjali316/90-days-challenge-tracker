@@ -77,20 +77,17 @@ function chips(list,target,prefix){return list.map(function(t){return '<button c
 function today(){
   var k=key(cur),d=dayOf(k),n=dayNo(cur),g=goal(n),wg=webGoal(n),wi=weekIdx(n),w=PLAN[wi],inRange=n>=1&&n<=TOTAL;
   var dn=done(d.dsa),med=d.dsa.filter(function(t){return t.done&&t.d!=='Easy'}).length;
-  var need=n>25?'4 problems (2 medium or more) and 2 hours web dev':'2 problems and 1 hour web dev (exam mode)';
-  var met=dn>=g&&(n<=25||med>=2)&&d.webMin>=wg;
+  var wn=d.web.length,wdn=done(d.web),need=(n>25?'4 problems (2 medium or more)':'2 problems (exam mode)')+(wn?' and '+wn+' web dev topic'+(wn>1?'s':''):'');
+  var met=dn>=g&&(n<=25||med>=2)&&(!wn||wdn>=wn);
   var prev=dayOf(key(addDays(cur,-1))),carry=prev.dsa.filter(function(t){return!t.done}).length+prev.web.filter(function(t){return!t.done}).length;
   var out='<div class="date"><button class="btn alt" data-act="prev">&lsaquo;</button><b>'+fmt(cur)+'</b><button class="btn alt" data-act="next">&rsaquo;</button></div><div style="text-align:center;margin-bottom:12px"><button class="btn alt" data-act="now">Go to today</button></div>';
   var started=db.lastBackup||0,hasData=Object.keys(db.days).length>0;
   if(hasData&&Date.now()-started>7*864e5)out+='<div class="banner">It has been over a week since your last backup. <a href="#" data-view="backup">Download one now</a>.</div>';
-  if(inRange&&n%7===0)out+='<div class="banner">Last day of '+w[0]+'. Write your weekly review in the Plan tab.</div>';
   if(d.rest)out+='<div class="banner" style="background:#DBEAFE;border-color:#2563EB;color:#1E3A8A">Rest day. Your streak is safe. Enjoy it.</div>';
-  if(inRange)out+='<div class="card focus"><b>This week: '+w[0]+'</b><div class="muted">Tap a topic to add it below.</div><div class="chips"><span class="muted">DSA:</span> '+chips(w[2],'dt')+'</div><div class="chips"><span class="muted">Web:</span> '+chips(w[3],'wt')+'</div></div>';
-  out+='<div class="card"><b>Daily goal: '+need+'</b><div class="prog"><i style="width:'+Math.min(100,dn/g*100)+'%"></i></div><span class="muted">DSA '+dn+' of '+g+(n>25?' (medium '+med+' of 2)':'')+'</span><div class="prog"><i style="width:'+Math.min(100,d.webMin/wg*100)+'%;background:var(--orange)"></i></div><span class="muted">Web dev '+hm(d.webMin)+' of '+hm(wg)+(met?'. Goal met, great work!':'')+'</span></div>';
+  out+='<div class="card"><b>Daily goal: '+need+'</b><div class="prog"><i style="width:'+Math.min(100,dn/g*100)+'%"></i></div><span class="muted">DSA '+dn+' of '+g+(n>25?' (medium '+med+' of 2)':'')+'</span>'+(wn?'<div class="prog"><i style="width:'+Math.min(100,wdn/wn*100)+'%;background:var(--orange)"></i></div><span class="muted">Web dev '+wdn+' of '+wn+' topics</span>':'')+(met?'<div class="muted"><b>Goal met, great work!</b></div>':'')+'</div>';
   var t=db.timer;
-  out+='<div class="card"><h2>Focus timer</h2>'+(t?'<div class="timer" id="tm">'+clock(elapsed())+'</div><p class="muted" style="text-align:center;margin:0">'+(t.mode==='dsa'?'DSA':'Web dev')+' session running</p><div class="tm"><button class="btn red" data-act="stop">Stop and save</button></div>':'<div class="tm"><button class="btn" data-act="start" data-mode="dsa">Start DSA</button><button class="btn" style="background:var(--orange)" data-act="start" data-mode="web">Start Web dev</button></div>')+'<p class="muted" style="text-align:center">Logged today: DSA '+hm(d.dsaMin||0)+', Web '+hm(d.webMin||0)+'. Add manually: <button class="chip" data-act="addmin" data-mode="dsa">+15m DSA</button><button class="chip" data-act="addmin" data-mode="web">+15m Web</button></p></div>';
   out+='<div class="card dsa"><h2>DSA problems</h2>'+rows(d.dsa,'dsa')+'<button class="btn alt" data-act="suggest">Suggest 3 for today</button><div class="add"><input type="text" id="dt" placeholder="Problem name or LeetCode number"><select id="dd"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><select id="dp">'+TOPICS.map(function(x){return '<option'+(inRange&&x===WTOPIC[wi]?' selected':'')+'>'+x+'</option>'}).join('')+'</select><button class="btn" data-act="addDsa">Add</button></div>'+(carry?'<div class="add"><button class="chip" data-act="carry">Carry over '+carry+' unfinished from yesterday</button></div>':'')+'</div>';
-  out+='<div class="card web"><h2>Web dev topics</h2>'+rows(d.web,'web')+'<div class="add"><input type="text" id="wt" placeholder="e.g. CSS flexbox, JS closures, React props"><button class="btn" data-act="addWeb">Add</button></div></div>';
+  out+=(wn||webOpen===k)?'<div class="card web"><h2>Web dev topics</h2>'+rows(d.web,'web')+'<div class="add"><input type="text" id="wt" placeholder="e.g. CSS flexbox, JS closures, React props"><button class="btn" data-act="addWeb">Add</button></div></div>':'<div style="text-align:center;margin:0 0 14px"><button class="btn alt" data-act="webshow">+ Add web dev for today</button></div>';
   out+='<div class="card"><h2>Notes</h2><textarea id="note" placeholder="What I learned, what was hard, what to revise">'+esc(d.note||'')+'</textarea></div>';
   out+='<div style="text-align:center"><button class="btn alt" data-act="rest">'+(d.rest?'Cancel rest day':'Mark as rest day')+'</button></div>';
   return out;
@@ -139,7 +136,7 @@ function report(){var dn=dayNo(new Date());if(dn<1||dn>TOTAL)return '';var s=wkS
   var h='<div class="card"><h2>'+(sun?'Weekly report':'This week so far')+'</h2><div>Solved <b>'+s.n+'</b> ('+s.c[0]+' easy, '+s.c[1]+' medium, '+s.c[2]+' hard). Web tasks done: <b>'+s.wd+'</b></div>';
   {var tot=0,dd=0,uu={};cparts().forEach(function(p){crows(p).forEach(function(i){var k=ckey(i);if(!uu[k]){uu[k]=1;tot++;if(cdone(i))dd++}})});var need=((tot-dd)/Math.max(1,TOTAL-dn+1)),pace=rec/7;h+='<div>Pace: <b>'+pace.toFixed(1)+'/day</b> over the last 7 days. You need <b>'+need.toFixed(1)+'/day</b> to finish the checklist by day '+TOTAL+': <b>'+(pace>=need?'on track':'behind')+'</b>.</div>'}
   return h+'</div>'}
-var APPV='7',sheetId=null,logFeel=0;
+var APPV='8',webOpen=null,sheetId=null,logFeel=0;
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
 function openSheet(h){var s=document.getElementById('psheet');s.innerHTML='<div class="box">'+h+'<button class="btn alt" data-act="shclose">Close</button></div>';s.hidden=false}
 function closeSheet(){var s=document.getElementById('psheet');if(s)s.hidden=true}
@@ -220,7 +217,7 @@ function dash(){
   var maxT=Math.max.apply(null,TOPICS.map(function(t){return topic[t]||0}).concat([1])),maxW=Math.max.apply(null,weekly.concat([1]));
   var heat=keys.map(function(k,i){var c=doneCount(k),l=c>=6?4:c>=4?3:c>=2?2:c>=1?1:0;
     return '<button style="--i:'+i+'" data-jump="'+k+'" title="Day '+(i+1)+': '+c+' done" class="l'+l+(c===0&&dayOf(k).rest?' rest':'')+(k===tk?' today':'')+(i+1>n?' fut':'')+'"></button>'}).join('');
-  var st=[[dsa,'Problems solved'],[web,'Web topics done'],[s.cur,'Day streak'],[s.best,'Best streak'],[active+'/'+n,'Active days'],[n?(dsa/n).toFixed(1):'0','Problems per day'],[hm(dm),'DSA time'],[hm(wm),'Web dev time']];
+  var st=[[dsa,'Problems solved'],[web,'Web topics done'],[s.cur,'Day streak'],[s.best,'Best streak'],[active+'/'+n,'Active days'],[n?(dsa/n).toFixed(1):'0','Problems per day']];
   return '<div class="stats">'+st.map(function(x){return '<div class="stat"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('')+'</div>'+
   '<div class="card"><h2>90-day map</h2><div class="heat">'+heat+'</div><p class="muted">Darker green means more tasks done. Blue is a rest day ('+rest+' so far). Tap a square to open that day.</p></div>'+
   '<div class="card bars"><h2>Problems by difficulty</h2>'+bar('Easy',diff.Easy,dsa||1,'#10B981')+bar('Medium',diff.Medium,dsa||1,'#F59E0B')+bar('Hard',diff.Hard,dsa||1,'#EF4444')+'</div>'+
@@ -276,6 +273,7 @@ document.addEventListener('click',function(e){
   else if(a==='suggest'){var d0=ensure(k),hv={},PP=cparts(),ad=0;d0.dsa.forEach(function(x){if(x.lk)hv[x.lk]=1});for(var pi=0;pi<PP.length&&ad<3;pi++){var pp=PP[(clPart+pi)%PP.length];for(var si=0;si<pp.sections.length&&ad<3;si++)pp.sections[si].items.forEach(function(it){if(ad<3&&!cdone(it)&&!hv[ckey(it)]){hv[ckey(it)]=1;ad++;d0.dsa.push({id:uid(),t:(it.n!=='-'?'#'+it.n+' ':'')+it.t,d:it.d,topic:ctopic(pp.name),done:false,rv:false,lk:ckey(it)})}})}if(!ad){alert('Nothing left to suggest. Add more problems in the DSA tab.');return}save();render()}
   else if(a==='clgo'){var P2=cparts();for(var a1=0;a1<P2.length;a1++)for(var b1=0;b1<P2[a1].sections.length;b1++){var it2=P2[a1].sections[b1].items.filter(function(x){return !cdone(x)})[0];if(it2){clPart=a1;openC[P2[a1].sections[b1].id]=true;shQ='';shF='all';render();setTimeout(function(){var r=document.getElementById('r-'+it2.id);if(r){r.scrollIntoView({block:'center'});r.classList.add('hl');setTimeout(function(){r.classList.remove('hl')},1600)}},60);return}}alert('Everything is solved. Great work!')}
   else if(a==='clexp'){cparts()[clPart].sections.forEach(function(s){openC[s.id]=b.dataset.v==='1'});render()}
+  else if(a==='webshow'){webOpen=k;render()}
   else if(a==='gotoday'){view='today';cur=new Date();render()}
   else if(a==='theme'){ls('theme90',b.dataset.t);applyTheme();menuSheet()}
   else if(a==='litetog'){var on=document.documentElement.classList.toggle('lite');ls('lite',on?'1':null);menuSheet()}
