@@ -219,3 +219,32 @@ textarea{width:100%;min-height:80px;resize:vertical}
 #toast[hidden]{display:none}
 #toast button{font:inherit;border:0;background:none;color:var(--purple);font-weight:800;cursor:pointer}
 #syncmsg.err{cursor:pointer;text-decoration:underline}
+
+/* DSA checklist: clean wrapping on phones */
+#nav button{white-space:nowrap}
+.sub.cl{margin:6px 0 0 0}
+.sub label.ck{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px 8px;padding:9px 0;border-top:1px solid var(--line);transform:none}
+.ck input[type=checkbox]{margin-top:2px;flex:none}
+.ck .t{flex:1 1 0;min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.ck .t a{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.ck .meta{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-left:26px}
+.ck .meta .chip{margin:0;padding:4px 10px;font-size:12px}
+.ck .meta .x{margin-left:auto}
+.ck .nt{flex:1 1 100%;padding-left:26px;font-size:13px}
+.due{padding:9px 0;border-top:1px solid var(--line)}
+.due .t{font-weight:700;overflow-wrap:anywhere}
+.due .muted{font-size:13px}
+.due .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.due .chip{margin:0}
+.wkh.ch{padding:12px 0;margin:0;border-top:1px solid var(--line)}
+.wkh.ch>div{min-width:0;overflow-wrap:anywhere}
+.sub.cl .btn.alt{margin:10px 0 6px}
+.add #shq{flex:1 1 0;min-width:0}
+.add #shf{flex:0 0 112px;min-width:0}
+.add input[data-f=n]{flex:0 0 72px;min-width:0}
+.add input[data-f=t]{flex:1 1 calc(100% - 82px);min-width:0}
+.add select[data-f=d]{flex:1 1 110px}
+@media(min-width:700px){.ck .meta{flex:0 0 auto;padding-left:0}}
+.sub label.ck{position:relative;padding-right:30px}
+.ck .meta .x{position:absolute;right:0;top:7px;margin:0}
+@media(max-width:400px){.sub label.ck{padding-right:26px}.ck .meta{padding-left:24px;gap:5px}.ck .meta .chip{padding:4px 8px}.ck .meta .tag{padding:2px 8px}.ck .nt{padding-left:24px}}
