@@ -20,7 +20,7 @@ var GOALS=[
 ['December','Build up','#7C3AED','DSA: Strings, Binary Search, start Linked Lists','Web: React basics + one small project'],
 ['January','Finish strong','#EA580C','DSA: Linked Lists, then Trees','Web: Complete React + 1-2 projects']];
 var MS=[['nov-html','Nov: HTML and CSS revised'],['nov-js','Nov: JavaScript completed'],['nov-proj','Nov: 2 JS projects built'],['dec-str','Dec: Strings done'],['dec-bs','Dec: Binary Search done'],['dec-react','Dec: React basics + small project'],['jan-ll','Jan: Linked Lists done'],['jan-tr','Jan: Trees basics done'],['jan-react','Jan: React complete with projects']];
-var db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},timer:null,lastBackup:0},view='today',cur=new Date(),openW={},openS={},saveFailed=false,lastSig='',just=null,justOpen=null;
+var db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},cfg:{},mk:[],dl:{},timer:null,lastBackup:0},view='today',cur=new Date(),openW={},openS={},saveFailed=false,lastSig='',just=null,justOpen=null;
 try{var raw=localStorage.getItem(KEY);if(raw){var x=JSON.parse(raw);for(var p in x)db[p]=x[p]}}catch(e){saveFailed=true}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 function save(){if(undoPending){undoPending=false;toast(UMSG[undoAct]||'Change saved.')}try{localStorage.setItem(KEY,JSON.stringify(db));saveFailed=false}catch(e){saveFailed=true}if(window.Sync)Sync.changed()}
@@ -52,14 +52,14 @@ function elapsed(){return db.timer?Math.floor((Date.now()-db.timer.start)/1000):
 function clock(sec){var m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
 function render(){uiSave();warnUpdate();
   var n=dayNo(new Date());
-  document.getElementById('sub').textContent=n<1?'Starts Nov 1, 2026. Get ready!':n>TOTAL?'Challenge complete. Well done!':'Day '+n+' of '+TOTAL+'  |  Finish line: Feb 6, 2027';
+  document.getElementById('sub').textContent=n<1?'Starts '+fmD(START)+'. Get ready!':n>TOTAL?'Challenge complete. Well done!':'Day '+n+' of '+TOTAL+'  |  Finish line: '+fmD(addDays(START,TOTAL-1));
   var tabs=['today:Today','plan:DSA','revise:Revise','dash:Stats','backup:Backup'];
   document.getElementById('nav').innerHTML=tabs.map(function(x){var p=x.split(':');return '<button data-view="'+p[0]+'" class="'+(view===p[0]?'on':'')+'">'+p[1]+'</button>'}).join('');
   var h=view==='today'?today():view==='plan'?checklist():view==='revise'?revise():view==='dash'?dash():backup();
   if(saveFailed)h='<div class="banner">Your browser is blocking storage, so progress will not be saved. Allow site data or use a normal (not private) window.</div>'+h;
   var app=document.getElementById('app'),sig=view+(view==='today'?key(cur):'');
   app.className=sig!==lastSig?'enter':'';document.getElementById('nav').className=app.className;lastSig=sig;
-  app.innerHTML=h;just=null;justOpen=null;
+  app.innerHTML=h;just=null;justOpen=null;a11y();
 }
 function burst(el){
   if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -77,8 +77,8 @@ function chips(list,target,prefix){return list.map(function(t){return '<button c
 function today(){
   var k=key(cur),d=dayOf(k),n=dayNo(cur),g=goal(n),wg=webGoal(n),wi=weekIdx(n),w=PLAN[wi],inRange=n>=1&&n<=TOTAL;
   var dn=done(d.dsa),med=d.dsa.filter(function(t){return t.done&&t.d!=='Easy'}).length;
-  var wn=d.web.length,wdn=done(d.web),need=(n>25?'4 problems (2 medium or more)':'2 problems (exam mode)')+(wn?' and '+wn+' web dev topic'+(wn>1?'s':''):'');
-  var met=dn>=g&&(n<=25||med>=2)&&(!wn||wdn>=wn);
+  var wn=d.web.length,wdn=done(d.web),need=(g+' problem'+(g>1?'s':'')+(!(db.cfg&&db.cfg.g)?(n>25?' (2 medium or more)':' (exam mode)'):''))+(wn?' and '+wn+' web dev topic'+(wn>1?'s':''):'');
+  var met=dn>=g&&(n<=25||med>=2||(db.cfg&&db.cfg.g))&&(!wn||wdn>=wn);
   var prev=dayOf(key(addDays(cur,-1))),carry=prev.dsa.filter(function(t){return!t.done}).length+prev.web.filter(function(t){return!t.done}).length;
   var out='<div class="date"><button class="btn alt" data-act="prev">&lsaquo;</button><b>'+fmt(cur)+'</b><button class="btn alt" data-act="next">&rsaquo;</button></div><div style="text-align:center;margin-bottom:12px"><button class="btn alt" data-act="now">Go to today</button></div>';
   var started=db.lastBackup||0,hasData=Object.keys(db.days).length>0;
@@ -86,6 +86,7 @@ function today(){
   if(d.rest)out+='<div class="banner" style="background:#DBEAFE;border-color:#2563EB;color:#1E3A8A">Rest day. Your streak is safe. Enjoy it.</div>';
   out+='<div class="card"><b>Daily goal: '+need+'</b><div class="prog"><i style="width:'+Math.min(100,dn/g*100)+'%"></i></div><span class="muted">DSA '+dn+' of '+g+(n>25?' (medium '+med+' of 2)':'')+'</span>'+(wn?'<div class="prog"><i style="width:'+Math.min(100,wdn/wn*100)+'%;background:var(--orange)"></i></div><span class="muted">Web dev '+wdn+' of '+wn+' topics</span>':'')+(met?'<div class="muted"><b>Goal met, great work!</b></div>':'')+'</div>';
   var t=db.timer;
+  out+=dueCard()+reviewCard(wi,n,inRange);
   out+='<div class="card dsa"><h2>DSA problems</h2>'+rows(d.dsa,'dsa')+'<button class="btn alt" data-act="suggest">Suggest 3 for today</button><div class="add"><input type="text" id="dt" placeholder="Problem name or LeetCode number"><select id="dd"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><select id="dp">'+TOPICS.map(function(x){return '<option'+(inRange&&x===WTOPIC[wi]?' selected':'')+'>'+x+'</option>'}).join('')+'</select><button class="btn" data-act="addDsa">Add</button></div>'+(carry?'<div class="add"><button class="chip" data-act="carry">Carry over '+carry+' unfinished from yesterday</button></div>':'')+'</div>';
   out+=(wn||webOpen===k)?'<div class="card web"><h2>Web dev topics</h2>'+rows(d.web,'web')+'<div class="add"><input type="text" id="wt" placeholder="e.g. CSS flexbox, JS closures, React props"><button class="btn" data-act="addWeb">Add</button></div></div>':'<div style="text-align:center;margin:0 0 14px"><button class="btn alt" data-act="webshow">+ Add web dev for today</button></div>';
   out+='<div class="card"><h2>Notes</h2><textarea id="note" placeholder="What I learned, what was hard, what to revise">'+esc(d.note||'')+'</textarea></div>';
@@ -94,38 +95,16 @@ function today(){
 }
 function wm(i){if(db.wm[i])return db.wm[i];var P=PLAN[i],o=[];P[2].forEach(function(t,j){o.push({id:'d'+j,t:t,g:'d',done:!!db.sub[i+'-'+j]})});P[3].forEach(function(t,j){o.push({id:'w'+j,t:t,g:'w',done:!!db.sub[i+'-'+(P[2].length+j)]})});return o}
 function wmSet(i,v){db.wm[i]=v;save();render()}
-function wmHtml(i){var A=wm(i),S=(db.sheet&&db.sheet.secs)||[];
-  function grp(g,l){return '<b class="muted">'+l+'</b>'+A.filter(function(x){return x.g===g}).map(function(x){var c=x.s!==undefined&&x.s!==''&&S[x.s];return '<label><input type="checkbox" data-act="wmtick" data-i="'+i+'" data-id="'+x.id+'"'+(mdone(x)?' checked':'')+(c?' disabled':'')+'>'+esc(x.t)+(c?' <span class="muted">('+c.it.filter(lcDone).length+'/'+c.it.length+' from sheet)</span>':'')+' <button class="x" data-act="wmdel" data-i="'+i+'" data-id="'+x.id+'" title="Remove">\u00d7</button></label>'}).join('')}
-  return grp('d','DSA')+grp('w','Web dev')+'<div class="add"><input type="text" id="wmt'+i+'" placeholder="Add a milestone for this week"><select id="wmg'+i+'"><option value="d">DSA</option><option value="w">Web dev</option></select>'+(S.length?'<select id="wms'+i+'"><option value="">No sheet link</option>'+S.map(function(c,j){return '<option value="'+j+'">'+esc(c.n)+'</option>'}).join('')+'</select>':'')+'<button class="btn" data-act="wmadd" data-i="'+i+'">Add</button></div><button class="btn alt" data-act="wkdraft" data-i="'+i+'">Draft weekly review</button>'}
 var shQ='',shF='all',IV=[1,3,7,14,30];
 function topicOf(c){var s=((c.p||'')+' '+c.n).toLowerCase();return /binary search/.test(s)?'Binary Search':/stack/.test(s)?'Stacks':/queue/.test(s)?'Queues':/string/.test(s)?'Strings':/linked/.test(s)?'Linked List':/tree/.test(s)?'Trees':/array|hash|pointer|prefix|window|kadane|interval|matrix|sort|index/.test(s)?'Arrays':'Other'}
 function lcSet(k,v){db.lc[k]=!!v;if(v){if(!db.sr[k])db.sr[k]={s:0,d:key(addDays(new Date(),IV[0]))}}else delete db.sr[k]}
 function mdone(x){var c=x.s!==undefined&&x.s!==''&&db.sheet&&db.sheet.secs&&db.sheet.secs[x.s];return c?c.it.every(lcDone):!!x.done}
-function pass(p){var d=lcDone(p);if(shF==='todo'&&d)return false;if(shF==='done'&&!d)return false;if(/^(Easy|Medium|Hard)$/.test(shF)&&p[2]!==shF)return false;if(shQ&&(p[0]+' '+p[1]).toLowerCase().indexOf(shQ)<0)return false;return true}
-function findP(k){var s=db.sheet.secs;for(var a=0;a<s.length;a++)for(var b=0;b<s[a].it.length;b++)if(lcKey(s[a].it[b])===k)return s[a].it[b];return null}
-function pRow(si,p,pi){return '<label><input type="checkbox" data-act="lc" data-k="'+esc(lcKey(p))+'"'+(lcDone(p)?' checked':'')+'><span class="t">'+(p[0]!=='-'?'#'+p[0]+' ':'')+esc(p[1])+'</span> <span class="tag '+p[2]+'">'+p[2]+'</span> <a class="muted" target="_blank" rel="noopener" href="https://leetcode.com/problemset/?search='+encodeURIComponent(p[0]!=='-'?p[0]:p[1])+'" title="Search on LeetCode">\u2197</a> <button class="chip" data-act="lcadd" data-si="'+si+'" data-pi="'+pi+'">+ Today</button> <button class="chip" data-act="pnote" data-k="'+esc(lcKey(p))+'">Note</button>'+(lcDone(p)?' <button class="chip" data-act="plog" data-k="'+esc(lcKey(p))+'">Log</button>':'')+(db.pn[lcKey(p)]?'<div class="muted">'+esc(db.pn[lcKey(p)])+'</div>':'')+'</label>'}
 function lcKey(p){return p[0]!=='-'?p[0]:p[1]}
 function lcDone(p){var k=lcKey(p);return db.lc.hasOwnProperty(k)?!!db.lc[k]:!!p[3]}
 function parseSheet(txt){var secs=[],c=null,pt='';txt.split(/\r?\n/).forEach(function(l){var m=l.match(/^\s*\d+\s+(\d+|-)\s+(.+?)\s+(Easy|Medium|Hard)\s+(Done|To do)/i);
   if(m){if(!c){c={n:'Problems',it:[]};secs.push(c)}c.it.push([m[1],m[2].trim(),m[3][0].toUpperCase()+m[3].slice(1).toLowerCase(),/^done/i.test(m[4])?1:0])}
   else if(/^\s*part\b/i.test(l)){pt=l.replace(/^\s*part\s*\d*\s*:?\s*/i,'').trim()}
   else if(l.trim()&&!/^\s*step\b/i.test(l)){c={n:l.trim(),p:pt,it:[]};secs.push(c)}});return secs.filter(function(s){return s.it.length})}
-function sheet(){var s=db.sheet;
-  if(!s||!s.secs||!s.secs.length)return '<div class="card"><h2>Problem sheet</h2><span class="muted">Paste your pattern-wise sheet (rows like: 1  682  Baseball Game  Easy  Done) and load it. It is saved as data, not code, so you can replace it any time.</span><textarea id="shp" placeholder="Paste the sheet here"></textarea><div class="add"><button class="btn" data-act="shload">Load sheet</button></div></div>';
-  var tot=0,dn=0,tk=key(new Date());s.secs.forEach(function(c){c.it.forEach(function(p){tot++;if(lcDone(p))dn++})});
-  var h='<div class="card"><h2>Problem sheet</h2><b>'+dn+' of '+tot+' solved</b><div class="prog"><i style="width:'+(dn/tot*100)+'%"></i></div>';
-  var due=Object.keys(db.sr).filter(function(k){return db.sr[k].d<=tk&&findP(k)}).sort(function(a,b){var x=db.sr[a],y=db.sr[b];return ((y.h||0)-(x.h||0))||((y.m||0)-(x.m||0))});
-  if(due.length)h+='<b class="muted">Revision due ('+due.length+')</b>'+due.slice(0,6).map(function(k){var p=findP(k);return '<div class="row"><span class="t">'+(p[0]!=='-'?'#'+p[0]+' ':'')+esc(p[1])+'</span>'+meta(k)+'<button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="e">Easy</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="h">Hard</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="f">Forgot</button></div>'}).join('');
-  var lk=wm(Math.max(0,weekIdx(dayNo(new Date())))).filter(function(x){return x.s!==undefined&&x.s!==''&&s.secs[x.s]&&!mdone(x)})[0],s0=lk?+lk.s:-1;
-  if(s0<0)s.secs.some(function(c,j){if(c.it.some(function(p){return !lcDone(p)})){s0=j;return true}});
-  if(s0>=0){var nx=[];s.secs[s0].it.forEach(function(p,pi){if(!lcDone(p)&&nx.length<3)nx.push(pRow(s0,p,pi))});h+='<b class="muted">Next up: '+esc(s.secs[s0].n)+'</b><div class="sub">'+nx.join('')+'</div>'}
-  var ps=s.secs.map(function(c){return {n:c.n,p:Math.round(c.it.filter(lcDone).length/c.it.length*100),f:c.it.reduce(function(a,p){var r=db.sr[lcKey(p)];return a+(r&&r.f||0)},0)}}).sort(function(a,b){return a.p-b.p}).slice(0,3);
-  h+='<b class="muted">Weakest patterns</b>'+ps.map(function(x){return '<div class="muted">'+esc(x.n)+': '+x.p+'% solved'+(x.f?', forgot '+x.f+'x':'')+'</div>'}).join('');
-  h+='<div class="add"><input type="text" id="shq" placeholder="Search problems" value="'+esc(shQ)+'"><select id="shf">'+[['all','All'],['todo','To do'],['done','Done'],['Easy','Easy'],['Medium','Medium'],['Hard','Hard']].map(function(o){return '<option value="'+o[0]+'"'+(shF===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>';
-  var fl=shQ||shF!=='all';
-  h+=s.secs.map(function(c,si){var its=[];c.it.forEach(function(p,pi){if(pass(p))its.push(pRow(si,p,pi))});if(fl&&!its.length)return '';var open=fl||!!openS[si];
-    return '<div class="wkh'+(open?' open':'')+'" data-act="opens" data-i="'+si+'"><div><b>'+esc(c.n)+'</b> <span class="muted">'+c.it.filter(lcDone).length+'/'+c.it.length+'</span></div></div>'+(open?'<div class="sub">'+its.join('')+'</div>':'')}).join('');
-  return h+'<div class="add"><input type="text" id="apn" placeholder="Add your own: 123 Problem name"><select id="apd"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><select id="aps">'+s.secs.map(function(c,j){return '<option value="'+j+'">'+esc(c.n)+'</option>'}).join('')+'<option value="new">New section...</option></select><button class="btn" data-act="apadd">Add</button></div><div class="add"><button class="btn alt" data-act="shreset">Replace sheet</button></div></div>'}
 var UNDO=['del','reset','shreset','wmdel','cldel','cldelsec','clreset'],UMSG={cldel:'Question removed.',cldelsec:'Topic deleted.',clreset:'Checklist reset.',del:'Task deleted.',reset:'All data reset.',shreset:'Sheet removed.',wmdel:'Milestone removed.'},undoS=null,undoT=null,undoPending=false,undoAct='';
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.innerHTML=esc(m)+' <button id="undobtn" type="button">Undo</button>';t.hidden=false;document.getElementById('undobtn').onclick=doUndo;clearTimeout(undoT);undoT=setTimeout(function(){t.hidden=true;undoS=null},8000)}
 function doUndo(){if(!undoS)return;var o=JSON.parse(undoS);if((o.epoch||0)!==(db.epoch||0))o.epoch=Date.now();Object.keys(db).forEach(function(k){delete db[k]});for(var k in o)db[k]=o[k];undoS=null;document.getElementById('toast').hidden=true;save();render()}
@@ -136,7 +115,30 @@ function report(){var dn=dayNo(new Date());if(dn<1||dn>TOTAL)return '';var s=wkS
   var h='<div class="card"><h2>'+(sun?'Weekly report':'This week so far')+'</h2><div>Solved <b>'+s.n+'</b> ('+s.c[0]+' easy, '+s.c[1]+' medium, '+s.c[2]+' hard). Web tasks done: <b>'+s.wd+'</b></div>';
   {var tot=0,dd=0,uu={};cparts().forEach(function(p){crows(p).forEach(function(i){var k=ckey(i);if(!uu[k]){uu[k]=1;tot++;if(cdone(i))dd++}})});var need=((tot-dd)/Math.max(1,TOTAL-dn+1)),pace=rec/7;h+='<div>Pace: <b>'+pace.toFixed(1)+'/day</b> over the last 7 days. You need <b>'+need.toFixed(1)+'/day</b> to finish the checklist by day '+TOTAL+': <b>'+(pace>=need?'on track':'behind')+'</b>.</div>'}
   return h+'</div>'}
-var APPV='8',webOpen=null,sheetId=null,logFeel=0;
+function fmD(x){return x.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function applyCfg(){var s=db.cfg&&db.cfg.s;if(s){var p=s.split('-');START=new Date(+p[0],+p[1]-1,+p[2])}else START=new Date(2026,10,1)}
+function goal(n){var c=db.cfg&&+db.cfg.g;return c>0?c:(n>25?4:2)}
+function a11y(){[].forEach.call(document.querySelectorAll('button[title]:not([aria-label])'),function(b){b.setAttribute('aria-label',b.title)});[].forEach.call(document.querySelectorAll('input[placeholder]:not([aria-label]),textarea[placeholder]:not([aria-label]),select:not([aria-label])'),function(x){x.setAttribute('aria-label',x.getAttribute('placeholder')||'Choose an option')});[].forEach.call(document.querySelectorAll('#nav button'),function(b){if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
+function dueRows(max){var tk=key(new Date()),due=Object.keys(db.sr).filter(function(k){return db.sr[k].d<=tk&&cfind(k)}).sort(function(a,b){var x=db.sr[a],y=db.sr[b];return ((y.h||0)-(x.h||0))||((y.m||0)-(x.m||0))});
+  return {n:due.length,h:due.slice(0,max).map(function(k){var i=cfind(k);return '<div class="due"><div class="t">'+(i.n!=='-'?'#'+esc(i.n)+' ':'')+esc(i.t)+'</div><div class="muted">'+meta(k)+'</div><div class="meta"><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="e">Easy</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="h">Hard</button><button class="chip" data-act="srg" data-k="'+esc(k)+'" data-r="f">Forgot</button></div></div>'}).join('')}}
+function dueCard(){var r=dueRows(5);return r.n?'<div class="card"><b>Revision due ('+r.n+')</b>'+r.h+'</div>':''}
+function reviewCard(wi,n,inR){if(!inR||!(n%7===0||cur.getDay()===0))return '';var s=wkStat(wi);return '<div class="card"><h2>Weekly review</h2><div class="muted">Week '+(wi+1)+': solved '+s.n+' ('+s.c[0]+' easy, '+s.c[1]+' medium, '+s.c[2]+' hard), web tasks done '+s.wd+'.</div><textarea id="wrv" data-w="'+wi+'" placeholder="What went well? What will you fix next week?">'+esc(db.rev[wi]||'')+'</textarea><button class="btn alt" data-act="wkdraft" data-i="'+wi+'">Insert summary</button></div>'}
+function chartsCard(){var P=cparts(),seen={},dif={Easy:[0,0],Medium:[0,0],Hard:[0,0]},bar=function(l,x,y){return '<div class="muted">'+esc(l)+': '+x+'/'+y+'</div><div class="prog"><i style="width:'+(y?x/y*100:0)+'%"></i></div>'},h='<div class="card"><h2>Progress by pattern</h2>';
+  P.forEach(function(p){var r=crows(p);h+=bar(p.name,r.filter(cdone).length,r.length);r.forEach(function(i){var k=ckey(i);if(!seen[k]&&dif[i.d]){seen[k]=1;dif[i.d][1]++;if(cdone(i))dif[i.d][0]++}})});
+  h+='<h2 style="margin-top:14px">By difficulty</h2>';Object.keys(dif).forEach(function(d){h+=bar(d,dif[d][0],dif[d][1])});return h+'</div>'}
+function dash(){return dash0()+chartsCard()}
+function mockSheet(){var P=cparts(),h=(db.mk||[]).slice(-3).reverse().map(function(m){return '<div class="muted">'+new Date(m.t).toLocaleDateString()+' | '+esc(m.part)+' | '+m.r+'/5 | '+m.mins+' min</div>'}).join('');
+  if(mock){var s=mock.ids.map(function(id){var f=cfindId(id);return f?'<div><b>'+(f.i.n!=='-'?'#'+esc(f.i.n)+' ':'')+'<a target="_blank" rel="noopener" href="https://leetcode.com/problemset/?search='+encodeURIComponent(f.i.n!=='-'?f.i.n:f.i.t)+'">'+esc(f.i.t)+'</a></b> <span class="tag '+esc(f.i.d)+'">'+esc(f.i.d)+'</span></div>':''}).join('');
+    openSheet('<h3>Mock interview</h3><div id="mockt">45:00</div>'+s+'<b class="muted">When you finish, rate how it went</b><div class="row2">'+[1,2,3,4,5].map(function(n){return '<button class="chip" data-act="mockend" data-n="'+n+'">'+n+'</button>'}).join('')+'</div>');return}
+  openSheet('<h3>Mock interview</h3><div class="muted">2 random unsolved problems, 45 minutes. Pick a pattern.</div><select id="mkp">'+P.map(function(p,i){return '<option value="'+i+'">'+esc(p.name)+'</option>'}).join('')+'</select><button class="btn" data-act="mockgo">Start</button>'+(h?'<b class="muted">Recent</b>'+h:''))}
+function histSheet(){if(!window.Sync||!Sync.isIn()){openSheet('<h3>Version history</h3><div class="muted">Sign in to see your saved versions.</div>');return}
+  openSheet('<h3>Version history</h3><div id="histbox" class="muted">Loading...</div>');
+  Sync.history().then(function(r){var b=document.getElementById('histbox');if(!b)return;if(!r||!r.length){b.textContent='No saved versions yet. One is saved at most every 10 minutes while you use the app. If this stays empty, run the history SQL from the README.';return}
+    histData=r;b.innerHTML=r.map(function(v,i){var n=Object.keys((v.data||{}).days||{}).length;return '<div class="hrow"><span>'+esc(new Date(v.created_at).toLocaleString())+'<br><span class="muted">'+n+' days logged</span></span><button class="chip" data-act="histrestore" data-i="'+i+'">Restore</button></div>'}).join('')})}
+function exportCsv(){var q=function(x){x=String(x==null?'':x);return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x},L=['pattern,topic,number,title,difficulty,status,minutes,feel,note'];
+  cparts().forEach(function(p){p.sections.forEach(function(s){s.items.forEach(function(i){var k=ckey(i),e=db.sr[k]||{};L.push([p.name,s.name,i.n,i.t,i.d,cdone(i)?'done':'todo',e.m||'',e.h||'',db.pn[k]||i.note||''].map(q).join(','))})})});
+  var b=new Blob([L.join('\n')],{type:'text/csv'}),x=document.createElement('a');x.href=URL.createObjectURL(b);x.download='dsa-progress.csv';document.body.appendChild(x);x.click();x.remove()}
+var APPV='9',mock=null,histData=[],webOpen=null,sheetId=null,logFeel=0;
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
 function openSheet(h){var s=document.getElementById('psheet');s.innerHTML='<div class="box">'+h+'<button class="btn alt" data-act="shclose">Close</button></div>';s.hidden=false}
 function closeSheet(){var s=document.getElementById('psheet');if(s)s.hidden=true}
@@ -147,8 +149,10 @@ function probSheet(id){var f=cfindId(id);if(!f)return;sheetId=id;var i=f.i,k=cke
   +'<b class="muted">Time and how hard it felt (1 easy, 5 hard)</b><div class="row2"><input type="text" id="psm" inputmode="numeric" placeholder="Minutes" value="'+(e.m||'')+'" style="max-width:110px">'+[1,2,3,4,5].map(function(n){return '<button class="chip feel" data-act="psfeel" data-n="'+n+'">'+n+'</button>'}).join('')+'</div><button class="btn" data-act="pslog">Save log</button>'
   +'<b class="muted">Edit</b><input type="text" id="pse" value="'+esc(i.t)+'"><div class="row2"><select id="psd">'+['Easy','Medium','Hard'].map(function(d){return '<option'+(d===i.d?' selected':'')+'>'+d+'</option>'}).join('')+'</select><select id="pst">'+f.p.sections.map(function(s){return '<option value="'+esc(s.id)+'"'+(s===f.s?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></div><button class="btn" data-act="psedit">Save changes</button>');
   setFeel(e.h||0)}
-function menuSheet(){var th=ls('theme90')||'auto',lite=document.documentElement.classList.contains('lite');
-  openSheet('<h3>Menu</h3><b class="muted">Theme</b><div class="row2">'+['auto','light','dark'].map(function(t){return '<button class="chip" data-act="theme" data-t="'+t+'"'+(t===th?' style="background:var(--purple);color:#fff"':'')+'>'+t[0].toUpperCase()+t.slice(1)+'</button>'}).join('')+'</div><button class="btn alt" data-act="litetog">'+(lite?'Turn Lite mode off':'Turn Lite mode on (saves battery)')+'</button><button class="btn" data-act="shareimg">Share progress image</button><button class="btn alt" data-act="guide">How to use this app</button><div class="muted">Version '+APPV+'</div>')}
+function menuSheet(){var th=ls('theme90')||'auto',lite=document.documentElement.classList.contains('lite'),c=db.cfg||{};
+  openSheet('<h3>Menu</h3><b class="muted">Theme</b><div class="row2">'+['auto','light','dark'].map(function(t){return '<button class="chip" data-act="theme" data-t="'+t+'"'+(t===th?' style="background:var(--purple);color:#fff"':'')+'>'+t[0].toUpperCase()+t.slice(1)+'</button>'}).join('')+'</div>'
+  +'<b class="muted">Settings</b><div class="row2"><label class="muted">Daily DSA target (blank = auto)<input type="text" id="cfg_g" inputmode="numeric" value="'+(c.g||'')+'"></label><label class="muted">Start date<input type="date" id="cfg_s" value="'+esc(c.s||key(START))+'"></label></div><button class="btn" data-act="cfgsave">Save settings</button>'
+  +'<button class="btn alt" data-act="mock">Mock interview</button><button class="btn alt" data-act="hist">Version history</button><button class="btn alt" data-act="csv">Export CSV</button><button class="btn alt" data-act="litetog">'+(lite?'Turn Lite mode off':'Turn Lite mode on (saves battery)')+'</button><button class="btn" data-act="shareimg">Share progress image</button><button class="btn alt" data-act="guide">How to use this app</button><div class="muted">Version '+APPV+'</div>')}
 function guideSheet(){openSheet('<h3>How to use</h3><ol class="gd"><li><b>Today:</b> tick your tasks. Tap <i>Suggest 3 for today</i> to add the next unsolved problems.</li><li><b>DSA:</b> tick problems as you solve them. Tap the <b>\u22ef</b> button on a problem for notes, time, editing, add to today and delete.</li><li><b>Continue where I left off</b> jumps to your next unsolved problem.</li><li><b>Revision due:</b> solved problems come back after 1, 3, 7, 14 and 30 days. Answer Easy, Hard or Forgot.</li><li><b>Menu:</b> theme, Lite mode and a progress image to share.</li><li>Sign in once to keep every device in sync. Deleted something by mistake? Use the Undo bar.</li></ol>')}
 function uiSave(){ls('ui90',JSON.stringify({v:view,p:clPart,f:shF,o:openC}))}
 function uiLoad(){try{var u=JSON.parse(ls('ui90')||'null');if(!u)return;if(['today','plan','revise','dash','backup'].indexOf(u.v)>=0)view=u.v;clPart=+u.p||0;if(/^(all|todo|done|Easy|Medium|Hard)$/.test(u.f))shF=u.f;openC=u.o||{}}catch(e){}}
@@ -181,25 +185,6 @@ function checklist(){var P=cparts();if(clPart>=P.length)clPart=0;var u={};P.forE
     return '<div class="wkh ch'+(open?' open':'')+'" data-act="clsec" data-id="'+esc(s.id)+'"><div><b>'+esc(s.name)+'</b> <span class="muted">'+d+'/'+s.items.length+'</span></div></div>'+(open?'<div class="sub cl">'+its.map(crow).join('')+'<div class="add" data-sid="'+esc(s.id)+'"><input type="text" data-f="n" placeholder="#" style="max-width:70px"><input type="text" data-f="t" placeholder="Add a question"><select data-f="d"><option>Easy</option><option selected>Medium</option><option>Hard</option></select><button class="btn" data-act="claddq">Add</button></div><button class="btn alt" data-act="cldelsec" data-id="'+esc(s.id)+'">Delete this topic</button></div>':'')}).join('');
   h+='<div class="add"><input type="text" id="newsec" placeholder="New topic in '+esc(p.name)+'"><button class="btn" data-act="claddsec">Add topic</button></div><div class="add"><button class="btn alt" data-act="climp">Import old checklist backup</button><button class="btn alt" data-act="clreset">Reset to original list</button></div></div>';
   return h}
-function plan(){
-  var c=weekIdx(dayNo(new Date())),started=dayNo(new Date())>=1,dn=Object.keys(db.weeks).filter(function(k){return db.weeks[k]}).length;
-  var nov=0;allKeys().forEach(function(k){dayOf(k).dsa.forEach(function(t){if(t.done&&(t.topic==='Stacks'||t.topic==='Queues'))nov++})});
-  var out='<div class="mg">'+GOALS.map(function(g){return '<div class="card" style="border-top:6px solid '+g[2]+'"><b style="color:'+g[2]+'">'+g[0]+': '+g[1]+'</b><span class="muted">'+g[3]+'<br>'+g[4]+'</span></div>'}).join('')+'</div>';
-  out+='<div class="card"><b>November target: 40-50 stack and queue problems</b><div class="prog"><i style="width:'+Math.min(100,nov/40*100)+'%"></i></div><span class="muted">'+nov+' solved so far (counts problems tagged Stacks or Queues)</span></div>';
-  out+='<div class="card"><h2>Milestones</h2>'+MS.map(function(m){return '<label class="wk" style="cursor:pointer"><input type="checkbox" data-act="ms" data-id="'+m[0]+'"'+(db.ms[m[0]]?' checked':'')+'><span>'+m[1]+'</span></label>'}).join('')+'</div>';
-  out+='<div class="card"><b>'+dn+' of 13 weeks done</b><div class="prog"><i style="width:'+(dn/13*100)+'%"></i></div></div>';
-  out+=report();
-  out+=sheet();
-  out+=PLAN.map(function(w,i){
-    var open=openW[i]!==undefined?openW[i]:(started&&i===c),items=[],A=wm(i),tot=A.length,dd=A.filter(mdone).length;
-    var h='<div class="card'+(started&&i===c?' curw':'')+'"><div class="wkh'+(open?' open':'')+'" data-act="openw" data-i="'+i+'"><input type="checkbox" data-act="week" data-i="'+i+'"'+(db.weeks[i]?' checked':'')+'><div><b>'+w[0]+'</b> <span class="muted">'+w[1]+' | '+dd+' of '+tot+' topics</span></div></div>';
-    if(open){
-      h+='<div class="sub'+(justOpen===i?' unfold':'')+'">'+wmHtml(i)+'<b class="muted">Weekly review: what went well, what to redo, plan for next week</b><textarea data-rev="'+i+'" placeholder="Write 2-3 lines">'+esc(db.rev[i]||'')+'</textarea></div>';
-    }
-    return h+'</div>';
-  }).join('');
-  return out;
-}
 function revise(){
   var items=[],late=[],tk=key(new Date());
   allKeys().forEach(function(k){var d=dayOf(k);d.dsa.forEach(function(t){if(t.rv)items.push({k:k,t:t});if(!t.done&&k<tk)late.push({k:k,t:t})})});
@@ -208,7 +193,7 @@ function revise(){
   return '<div class="card dsa"><h2>Revise later</h2>'+r+'</div><div class="card"><h2>Unfinished from earlier days</h2>'+l+'</div>';
 }
 function bar(label,val,max,color){return '<div class="b"><span>'+esc(label)+'</span><div class="prog"><i style="width:'+(max?val/max*100:0)+'%;background:'+color+'"></i></div><span class="n">'+val+'</span></div>'}
-function dash(){
+function dash0(){
   var keys=allKeys(),dsa=0,web=0,active=0,dm=0,wm=0,rest=0,diff={Easy:0,Medium:0,Hard:0},topic={},weekly=[],i;
   for(i=0;i<13;i++)weekly.push(0);
   keys.forEach(function(k,i){var d=dayOf(k);if(doneCount(k)>0)active++;if(d.rest)rest++;dm+=d.dsaMin||0;wm+=d.webMin||0;
@@ -264,6 +249,13 @@ document.addEventListener('click',function(e){
   else if(a==='pnote'){var nk=b.dataset.k,nv=prompt('Note for this problem (approach, trick, mistake):',db.pn[nk]||'');if(nv===null)return;if(nv.trim())db.pn[nk]=nv.trim();else delete db.pn[nk];save();render()}
   else if(a==='plog'){var gk=b.dataset.k,lv=prompt('Minutes taken, then how hard it felt 1-5 (example: 25 4):');if(!lv)return;var mm=lv.match(/(\d+)\D+([1-5])/);if(!mm){alert('Use: minutes then 1-5, for example 25 4');return}var en=db.sr[gk]=db.sr[gk]||{s:0,d:key(addDays(new Date(),1))};en.m=+mm[1];en.h=+mm[2];save();render()}
   else if(a==='apadd'){var av=document.getElementById('apn').value.trim();if(!av)return;var am=av.match(/^(\d+)\s+(.+)$/),ap=[am?am[1]:'-',am?am[2]:av,document.getElementById('apd').value,0],as=document.getElementById('aps').value;if(as==='new'){var nn=prompt('New section name:');if(!nn)return;db.sheet.secs.push({n:nn.trim(),p:'',it:[ap]})}else db.sheet.secs[+as].it.push(ap);save();render()}
+  else if(a==='cfgsave'){var gv=parseInt(document.getElementById('cfg_g').value,10),sv=document.getElementById('cfg_s').value;db.cfg={g:gv>0&&gv<=20?gv:0,s:/^\d{4}-\d{2}-\d{2}$/.test(sv)?sv:''};applyCfg();save();closeSheet();render()}
+  else if(a==='mock'){mockSheet()}
+  else if(a==='mockgo'){var mp=cparts()[+document.getElementById('mkp').value],un=crows(mp).filter(function(x){return !cdone(x)}).sort(function(){return Math.random()-.5}).slice(0,2);if(!un.length){alert('Nothing unsolved in this pattern.');return}mock={start:Date.now(),end:Date.now()+45*60000,part:mp.name,ids:un.map(function(x){return x.id})};mockSheet()}
+  else if(a==='mockend'){if(!mock)return;(db.mk=db.mk||[]).push({t:Date.now(),part:mock.part,mins:Math.max(1,Math.round((Date.now()-mock.start)/60000)),r:+b.dataset.n,p:mock.ids.map(function(id){var f=cfindId(id);return f?f.i.t:''})});mock=null;save();closeSheet()}
+  else if(a==='hist'){histSheet()}
+  else if(a==='histrestore'){if(confirm('Replace everything, on every device, with this saved version?')){Sync.restore(histData[+b.dataset.i].data);closeSheet()}}
+  else if(a==='csv'){exportCsv()}
   else if(a==='shopen'){probSheet(b.dataset.id)}
   else if(a==='shclose'){closeSheet()}
   else if(a==='psnote'){var f1=cfindId(sheetId);if(!f1)return;var k1=ckey(f1.i),v1=document.getElementById('psn').value.trim();if(v1)db.pn[k1]=v1;else delete db.pn[k1];save();closeSheet();render()}
@@ -293,14 +285,14 @@ document.addEventListener('click',function(e){
   else if(a==='shload'){var ss=parseSheet(document.getElementById('shp').value);if(!ss.length){alert('No problems found. Paste the table rows (Step, #, Problem, Difficulty, Status).');return}db.sheet={secs:ss};save();render()}
   else if(a==='shreset'){if(confirm('Replace the sheet? Your ticks on it are kept.')){db.sheet={};save();render()}}
   else if(a==='opens'){openS[+b.dataset.i]=!openS[+b.dataset.i];render()}
-  else if(a==='reset'){if(confirm('Erase all your progress? This cannot be undone.')){db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},timer:null,lastBackup:0,epoch:Date.now()};save();render()}}
+  else if(a==='reset'){if(confirm('Erase all your progress? This cannot be undone.')){db={days:{},weeks:{},sub:{},rev:{},ms:{},wm:{},lc:{},sheet:{},sr:{},pn:{},cl:{},cfg:{},mk:[],dl:{},timer:null,lastBackup:0,epoch:Date.now()};save();render()}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,a=t.dataset.act;
   if(t.id==='shf'){shF=t.value;render();return}
   if(t.type==='checkbox'&&t.checked)burst(t);
   if(a==='tick')just=t.dataset.id;
-  if(t.id==='imp'&&t.files[0]){var r=new FileReader();r.onload=function(){try{var x=JSON.parse(r.result);if(!x.days)throw 0;if(!confirm('Restore this backup? It replaces ALL data here and on every synced device.'))return;db={days:x.days,weeks:x.weeks||{},sub:x.sub||{},rev:x.rev||{},ms:x.ms||{},wm:x.wm||{},lc:x.lc||{},sheet:x.sheet||{},sr:x.sr||{},pn:x.pn||{},cl:x.cl||{},timer:null,lastBackup:x.lastBackup||0,epoch:Date.now()};save();render();alert('Backup restored.')}catch(err){alert('That file is not a valid backup.')}};r.readAsText(t.files[0]);return}
+  if(t.id==='imp'&&t.files[0]){var r=new FileReader();r.onload=function(){try{var x=JSON.parse(r.result);if(!x.days)throw 0;if(!confirm('Restore this backup? It replaces ALL data here and on every synced device.'))return;db={days:x.days,weeks:x.weeks||{},sub:x.sub||{},rev:x.rev||{},ms:x.ms||{},wm:x.wm||{},lc:x.lc||{},sheet:x.sheet||{},sr:x.sr||{},pn:x.pn||{},cl:x.cl||{},cfg:x.cfg||{},mk:x.mk||[],timer:null,lastBackup:x.lastBackup||0,epoch:Date.now()};save();render();alert('Backup restored.')}catch(err){alert('That file is not a valid backup.')}};r.readAsText(t.files[0]);return}
   if(a==='tick'){ensure(key(cur))[t.dataset.type].forEach(function(x){if(x.id===t.dataset.id){x.done=t.checked;if(x.lk)lcSet(x.lk,t.checked)}});save();render()}
   else if(a==='rvdone'){ensure(t.dataset.k).dsa.forEach(function(x){if(x.id===t.dataset.id)x.rvDone=t.checked});save();render()}
   else if(a==='week'){db.weeks[t.dataset.i]=t.checked;save();render()}
@@ -312,12 +304,14 @@ document.addEventListener('change',function(e){
 });
 document.addEventListener('input',function(e){
   if(e.target.id==='shq'){shQ=e.target.value.trim().toLowerCase();render();var q9=document.getElementById('shq');q9.focus();q9.setSelectionRange(q9.value.length,q9.value.length);return}
+  if(e.target.id==='wrv'){db.rev[+e.target.dataset.w]=e.target.value;save();return}
   if(e.target.id==='note'){ensure(key(cur)).note=e.target.value;save()}
   if(e.target.dataset.rev!==undefined){db.rev[e.target.dataset.rev]=e.target.value;save()}
 });
 document.addEventListener('keydown',function(e){if(e.key==='Enter'){if(e.target.id==='dt')document.querySelector('[data-act=addDsa]').click();if(e.target.id==='wt')document.querySelector('[data-act=addWeb]').click()}});
 setInterval(function(){var el=document.getElementById('tm');if(el)el.textContent=clock(elapsed())},1000);
-uiLoad();applyTheme();render();
+applyCfg();uiLoad();applyTheme();render();
+setInterval(function(){var el=document.getElementById('mockt');if(el&&mock){var s=Math.max(0,Math.round((mock.end-Date.now())/1000));el.textContent=Math.floor(s/60)+':'+('0'+s%60).slice(-2)}},1000);
 if(window.Sync)Sync.init();
 if(!ls('guide90')){ls('guide90','1');guideSheet()}
 var tk0=key(new Date());function roll(){var n=key(new Date());if(n!==tk0){if(key(cur)===tk0)cur=new Date();tk0=n;render()}}

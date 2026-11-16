@@ -280,3 +280,9 @@ html[data-theme=dark]{--bg:#0B1020;--card:#1E293B;--text:#E5E7EB;--muted:#9CA3AF
 .stk .add:first-child .chip{flex:none;white-space:nowrap}
 #psheet .row2 #psm{flex:0 0 92px}
 #psheet .feel{min-width:36px;padding:0 8px}
+
+:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+#psheet input[type=date]{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text)}
+#psheet .row2 label{flex:1 1 140px;display:grid;gap:4px;min-width:0}
+#psheet .hrow{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+#mockt{font-size:34px;font-weight:800}
