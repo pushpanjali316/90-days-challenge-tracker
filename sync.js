@@ -3,7 +3,7 @@
 (function () {
   var C = window.SYNC_CONFIG || {}, sb = null, user = null, ch = null;
   var snap = {}, timer = null, busy = false, again = false, tsnap = {}, tday = {}, lastOk = 0;
-  var BUCKETS = ['weeks', 'sub', 'rev', 'ms', 'wm', 'sheet', 'cl', 'cfg', 'mk'];
+  var BUCKETS = ['weeks', 'sub', 'rev', 'ms', 'wm', 'lc', 'sheet', 'sr', 'pn', 'cl'];
 
   function $(id) { return document.getElementById(id); }
   function val(id) { return $(id).value.trim(); }
@@ -18,13 +18,12 @@
   // Items that sync: each day, plus each small bucket (weeks, sub, rev, ms)
   function units(d) {
     var u = {}; for (var k in d.days) u['d:' + k] = d.days[k];
-    ['lc', 'sr', 'pn'].forEach(function (b) { for (var x in d[b] || {}) u[b + ':' + x] = d[b][x]; }); // per-problem items
     BUCKETS.forEach(function (b) { u[b] = d[b] || {}; });
     return u;
   }
   function pack(d) {
     return { days: d.days || {}, weeks: d.weeks || {}, sub: d.sub || {}, rev: d.rev || {},
-             ms: d.ms || {}, wm: d.wm || {}, lc: d.lc || {}, sheet: d.sheet || {}, sr: d.sr || {}, pn: d.pn || {}, cl: d.cl || {}, cfg: d.cfg || {}, mk: d.mk || [], dl: d.dl || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
+             ms: d.ms || {}, wm: d.wm || {}, lc: d.lc || {}, sheet: d.sheet || {}, sr: d.sr || {}, pn: d.pn || {}, cl: d.cl || {}, mod: d.mod || {}, epoch: d.epoch || 0 };
   }
   function say(cls, msg) {
     var e = $('syncmsg'); if (e) { e.className = cls; e.textContent = msg; e.onclick = cls === 'err' ? function () { sync(); } : null; }
@@ -72,7 +71,6 @@
     stampTasks();
     var u = units(db), m = db.mod = db.mod || {};
     for (var k in u) { var s = JSON.stringify(u[k]); if (snap[k] !== s) { snap[k] = s; m[k] = Date.now(); } }
-    for (var x in snap) if (!(x in u)) { (db.dl = db.dl || {})[x] = Date.now(); delete snap[x]; delete m[x]; }
     store();
     if (user) { say('busy', 'Saving...'); clearTimeout(timer); timer = setTimeout(sync, 1000); }
   }
@@ -82,24 +80,15 @@
     var ea = a.epoch || 0, eb = b.epoch || 0;
     if (eb > ea) return pack(b);
     if (ea > eb) return pack(a);
-    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, cfg: {}, mk: [], dl: {}, mod: {}, epoch: ea };
-    var dl = {}, seen = {};
-    [a.dl, b.dl].forEach(function (x) { for (var i in x || {}) dl[i] = Math.max(dl[i] || 0, x[i]); });
+    var out = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, mod: {}, epoch: ea };
     var ua = units(a), ub = units(b), ma = a.mod || {}, mb = b.mod || {};
     Object.keys(ua).concat(Object.keys(ub)).forEach(function (k) {
-      if (seen[k]) return; seen[k] = 1;
       var useB = (k in ub) && (!(k in ua) || (mb[k] || 0) > (ma[k] || 0));
       var src = useB ? ub : ua, m = useB ? mb : ma;
       var both = (k in ua) && (k in ub);
-      var md = both ? Math.max(ma[k] || 0, mb[k] || 0) : (m[k] || 0);
-      if (dl[k] && dl[k] >= md) return; // deleted after its last edit
-      var p = k.indexOf(':'), b0 = k.slice(0, p);
-      if (k.indexOf('d:') === 0) out.days[k.slice(2)] = both ? mday(ua[k], ub[k], ma[k] || 0, mb[k] || 0) : src[k];
-      else if (b0 === 'lc' || b0 === 'sr' || b0 === 'pn') out[b0][k.slice(p + 1)] = src[k];
-      else out[k] = src[k];
-      out.mod[k] = md;
+      if (k.indexOf('d:') === 0) out.days[k.slice(2)] = both ? mday(ua[k], ub[k], ma[k] || 0, mb[k] || 0) : src[k]; else out[k] = src[k];
+      out.mod[k] = both ? Math.max(ma[k] || 0, mb[k] || 0) : (m[k] || 0);
     });
-    out.dl = dl;
     return out;
   }
 
@@ -115,14 +104,12 @@
       var m = rem ? merge(db, rem) : pack(db);
       for (var k in m) db[k] = m[k];
       store();
-      if (window.applyCfg) applyCfg();
-      var u = units(db); snap = {}; for (var j in u) snap[j] = JSON.stringify(u[j]);
+      var u = units(db); for (var j in u) snap[j] = JSON.stringify(u[j]);
       seedT();
       if (norm(pack(db)) !== before) render();
       if (norm(pack(db)) !== (rem ? norm(pack(rem)) : '')) {
         var w = await sb.from('tracker_data').upsert({ user_id: user.id, data: pack(db), updated_at: new Date().toISOString() });
         if (w.error) throw w.error;
-        snapshotHist();
       }
       lastOk = Date.now(); say('ok', 'Synced just now');
     } catch (e) { say('err', 'Sync failed - tap to retry'); }
@@ -163,7 +150,7 @@
     if (!confirm('Sign out? Your data stays in your cloud account but is removed from this device.')) return;
     await sb.auth.signOut();
     if (ch) { sb.removeChannel(ch); ch = null; }
-    var e = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, cfg: {}, mk: [], dl: {}, mod: {}, timer: null, lastBackup: 0, epoch: 0 };
+    var e = { days: {}, weeks: {}, sub: {}, rev: {}, ms: {}, wm: {}, lc: {}, sheet: {}, sr: {}, pn: {}, cl: {}, mod: {}, timer: null, lastBackup: 0, epoch: 0 };
     Object.keys(db).forEach(function (k) { delete db[k]; });
     for (var k in e) db[k] = e[k];
     snap = {}; store(); render();
@@ -197,25 +184,5 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
   }
 
-  // Cloud history: keep the last 10 saved versions (needs the tracker_history table)
-  var lastHist = 0;
-  async function snapshotHist() {
-    var t = Date.now(); if (t - lastHist < 600000) return; lastHist = t;
-    try {
-      await sb.from('tracker_history').insert({ user_id: user.id, data: pack(db) });
-      var r = await sb.from('tracker_history').select('id').eq('user_id', user.id).order('id', { ascending: false });
-      if (r.data && r.data.length > 10) await sb.from('tracker_history').delete().in('id', r.data.slice(10).map(function (x) { return x.id; }));
-    } catch (e) {}
-  }
-  async function history() {
-    if (!user) return null;
-    var r = await sb.from('tracker_history').select('id,created_at,data').eq('user_id', user.id).order('id', { ascending: false }).limit(10);
-    return r.error ? null : r.data;
-  }
-  function restore(data) { // replace everything with an older version, on every device
-    var p = pack(data); p.epoch = Date.now();
-    for (var k in p) db[k] = p[k];
-    store(); snap = {}; seedT(); changed(); if (window.applyCfg) applyCfg(); render();
-  }
-  window.Sync = { init: init, changed: changed, history: history, restore: restore, isIn: function () { return !!user; }, _merge: merge };
+  window.Sync = { init: init, changed: changed, _merge: merge };
 })();
